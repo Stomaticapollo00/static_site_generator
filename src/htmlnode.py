@@ -33,7 +33,7 @@ class LeafNode(HTMLNode):
                 case "a":
                     return f"<{self.tag}{self.props_to_html()}>{self.value}</{self.tag}>"
                 case "img":
-                    return f'<{self.tag} src="{str(self.props[self.tag])}" alt="{self.value}" />'
+                    return f'<{self.tag} src="{str(self.props["src"])}" alt="{str(self.props["alt"])}" />'
                 case _:
                     return f"<{self.tag}>{self.value}</{self.tag}>"
   

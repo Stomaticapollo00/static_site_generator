@@ -3,7 +3,7 @@ import unittest
 from htmlnode import HTMLNode, LeafNode, ParentNode
 
 
-class TestTextNode(unittest.TestCase):
+class TestHTMLNode(unittest.TestCase):
     def test_htmlnode(self):
         test_props = {"href": "https://www.google.com", "target": "_blank",}
         node = HTMLNode("tag line", "I am a value", None, test_props)
@@ -44,7 +44,7 @@ class TestTextNode(unittest.TestCase):
         node = LeafNode("p", "Hello, world!")
         node2 = LeafNode("b", "Hello, world!")
         node3 = LeafNode("a", "Click me!", {"href": "https://www.google.com"})
-        node4 = LeafNode("img", "Im an image!", {"img": "https://www.google.com"})
+        node4 = LeafNode("img", "", {"src": "https://www.google.com", "alt": "Im an image!"})
         self.assertEqual(node.to_html(), "<p>Hello, world!</p>")
         self.assertEqual(node2.to_html(), "<b>Hello, world!</b>")
         self.assertEqual(node3.to_html(), '<a href="https://www.google.com">Click me!</a>')

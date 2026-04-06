@@ -1,4 +1,5 @@
 from textnode import TextNode, TextType
+from htmlnode import LeafNode, ParentNode
 
 def main():
     testtype = TextType.LINK
