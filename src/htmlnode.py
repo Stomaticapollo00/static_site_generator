@@ -25,15 +25,35 @@ class LeafNode(HTMLNode):
     
     def to_html(self):
         if self.value is None:
-            raise ValueError
+            raise ValueError("LeafNode was created with no text value")
         elif self.tag is None:
             return self.value
         else:
             match self.tag:
                 case "a":
                     return f"<{self.tag}{self.props_to_html()}>{self.value}</{self.tag}>"
+                case "img":
+                    return f'<{self.tag} src="{str(self.props[self.tag])}" alt="{self.value}" />'
                 case _:
                     return f"<{self.tag}>{self.value}</{self.tag}>"
   
     def __repr__(self):
         return f"LeafNode({self.tag}; {self.value}; {self.props_to_html()})"
+
+class ParentNode(HTMLNode):
+    def __init__(self, tag, children, props=None):
+        super().__init__(tag, None, children, props)
+    
+    def to_html(self):
+        if self.tag is None:
+            raise ValueError("ParentNode was created with no HTML Tag")
+        elif self.children is None:
+            raise ValueError("ParentNode was created with no Child Node(s)")
+        else:
+            match self.tag:
+                case "a":
+                    return f"<{self.tag}{self.props_to_html()}>{"".join(map(lambda child: child.to_html(), self.children))}</{self.tag}>"
+                case "img":
+                    return f'<{self.tag} src="{str(self.props[self.tag])}" alt="" />{"".join(map(lambda child: child.to_html(), self.children))}'
+                case _:
+                    return f"<{self.tag}>{"".join(map(lambda child: child.to_html(), self.children))}</{self.tag}>"
