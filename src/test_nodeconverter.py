@@ -2,10 +2,10 @@ import unittest
 
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from nodeconverter import text_node_to_html_node, split_nodes_delimiter
+from nodeconverter import *
 
 
-class TestTextToHTMLConverter(unittest.TestCase):
+class TestTextNodeToHTMLNode(unittest.TestCase):
     def test_text(self):
         node = TextNode("This is a text node", TextType.TEXT)
         html_node = text_node_to_html_node(node)
@@ -49,74 +49,184 @@ class TestTextToHTMLConverter(unittest.TestCase):
         with self.assertRaises(Exception):
             text_node_to_html_node(node)
 
-class TestSplitNodesDelimiter(unittest.TestCase):
-    def test_splitting(self):
-        node = TextNode("This is text with a `code block` word", TextType.TEXT)
-        node2 = TextNode("This is text with a **bolded phrase** in the middle", TextType.TEXT)
-        node3 = TextNode("This is text with a bold phrase at **the end**", TextType.TEXT)
-        node4 = TextNode("This is **text** with a few **bold** words **in it**", TextType.TEXT)
-        node5 = TextNode("**This is text** with a bold phrase at the beginning", TextType.TEXT)
-        node6 = TextNode("This is `text without closing the delimiter", TextType.TEXT)
-        node7 = TextNode("This is _text_ with **multiple** delimiters", TextType.TEXT)
-        node8 = TextNode("This is already bold", TextType.BOLD)
-        node9 = TextNode("This is already italic", TextType.ITALIC)
-        node10 = TextNode("This is just text", TextType.TEXT)
-        new_nodes = split_nodes_delimiter([node], "`", TextType.CODE)
-        new_nodes2 = split_nodes_delimiter([node2, node3, node4], "**", TextType.BOLD)
-        new_nodes3 = split_nodes_delimiter([node5], "**", TextType.BOLD)
-        new_nodes4 = split_nodes_delimiter(split_nodes_delimiter([node7], "_", TextType.ITALIC), "**", TextType.BOLD)
-        new_nodes5 = split_nodes_delimiter([node2, node8, node9, node10], "**", TextType.BOLD)
+class TestTokenizer(unittest.TestCase):
+    def test_tokenize_inline_markdown(self):
+        text1 = "hello"
+        text2 = "hello **world**"
+        text3 = "hello _world_, hi"
+        text4 = "hello `print('world')`"
+        text5 = "go to [hello](https://www.world.com)"
+        text6 = "![hello](https://www.world.com/image) OMG, check this out!"
+        text7 = "**hello**, _I am_ the ![world](https://www.world.com/image)[click here to see more](https://www.world.com)"
+        new_nodes1 = tokenize_inline_markdown(text1)
+        new_nodes2 = tokenize_inline_markdown(text2)
+        new_nodes3 = tokenize_inline_markdown(text3)
+        new_nodes4 = tokenize_inline_markdown(text4)
+        new_nodes5 = tokenize_inline_markdown(text5)
+        new_nodes6 = tokenize_inline_markdown(text6)
+        new_nodes7 = tokenize_inline_markdown(text7)
         self.assertEqual(
-                            new_nodes,
-                            [
-                                TextNode("This is text with a ", TextType.TEXT),
-                                TextNode("code block", TextType.CODE),
-                                TextNode(" word", TextType.TEXT),
-                            ],
-                        )
+            new_nodes1,
+            [
+                TextNode("hello", TextType.TEXT),
+            ],
+        )
         self.assertEqual(
-                            new_nodes2,
-                            [
-                                TextNode("This is text with a ", TextType.TEXT),
-                                TextNode("bolded phrase", TextType.BOLD),
-                                TextNode(" in the middle", TextType.TEXT),
-                                TextNode("This is text with a bold phrase at ", TextType.TEXT),
-                                TextNode("the end", TextType.BOLD),
-                                TextNode("This is ", TextType.TEXT),
-                                TextNode("text", TextType.BOLD),
-                                TextNode(" with a few ", TextType.TEXT),
-                                TextNode("bold", TextType.BOLD),
-                                TextNode(" words ", TextType.TEXT),
-                                TextNode("in it", TextType.BOLD),
-                            ],
-                        )
+            new_nodes2,
+            [
+                TextNode("hello ", TextType.TEXT),
+                TextNode("world", TextType.BOLD),
+            ],
+        )
         self.assertEqual(
-                            new_nodes3,
-                            [
-                                TextNode("This is text", TextType.BOLD),
-                                TextNode(" with a bold phrase at the beginning", TextType.TEXT),
-                            ],
-                        )
+            new_nodes3,
+            [
+                TextNode("hello ", TextType.TEXT),
+                TextNode("world", TextType.ITALIC),
+                TextNode(", hi", TextType.TEXT),
+            ],
+        )
         self.assertEqual(
-                            new_nodes4,
-                            [
-                                TextNode("This is ", TextType.TEXT),
-                                TextNode("text", TextType.ITALIC),
-                                TextNode(" with ", TextType.TEXT),
-                                TextNode("multiple", TextType.BOLD),
-                                TextNode(" delimiters", TextType.TEXT),
-                            ],
-                        )
+            new_nodes4,
+            [
+                TextNode("hello ", TextType.TEXT),
+                TextNode("print('world')", TextType.CODE),
+            ],
+        )
         self.assertEqual(
-                            new_nodes5,
-                            [
-                                TextNode("This is text with a ", TextType.TEXT),
-                                TextNode("bolded phrase", TextType.BOLD),
-                                TextNode(" in the middle", TextType.TEXT),
-                                TextNode("This is already bold", TextType.BOLD),
-                                TextNode("This is already italic", TextType.ITALIC),
-                                TextNode("This is just text", TextType.TEXT),
-                            ],
-                        )
-        with self.assertRaises(Exception):
-            split_nodes_delimiter([node6], "`", TextType.CODE)
+            new_nodes5,
+            [
+                TextNode("go to ", TextType.TEXT),
+                TextNode("hello", TextType.LINK, "https://www.world.com"),
+            ],
+        )
+        self.assertEqual(
+            new_nodes6,
+            [
+                TextNode("hello", TextType.IMAGE, "https://www.world.com/image"),
+                TextNode(" OMG, check this out!", TextType.TEXT),
+            ],
+        )
+        self.assertEqual(
+            new_nodes7,
+            [
+                TextNode("hello", TextType.BOLD),
+                TextNode(", ", TextType.TEXT),
+                TextNode("I am", TextType.ITALIC),
+                TextNode(" the ", TextType.TEXT),
+                TextNode("world", TextType.IMAGE, "https://www.world.com/image"),
+                TextNode("click here to see more", TextType.LINK, "https://www.world.com"),
+            ],
+        )
+
+    def test_text_to_textnode(self):
+        text1 = "hello"
+        text2 = "hello **world**"
+        text3 = "hello _world_, hi"
+        text4 = "hello `print('world')`"
+        text5 = "go to [hello](https://www.world.com)"
+        text6 = "![hello](https://www.world.com/image) OMG, check this out!"
+        text7 = "**hello**, _I am_ the ![world](https://www.world.com/image)[click here to see more](https://www.world.com)"
+        new_nodes1 = text_to_textnodes(text1)
+        new_nodes2 = text_to_textnodes(text2)
+        new_nodes3 = text_to_textnodes(text3)
+        new_nodes4 = text_to_textnodes(text4)
+        new_nodes5 = text_to_textnodes(text5)
+        new_nodes6 = text_to_textnodes(text6)
+        new_nodes7 = text_to_textnodes(text7)
+        self.assertEqual(
+            new_nodes1,
+            [
+                TextNode("hello", TextType.TEXT),
+            ],
+        )
+        self.assertEqual(
+            new_nodes2,
+            [
+                TextNode("hello ", TextType.TEXT),
+                TextNode("world", TextType.BOLD),
+            ],
+        )
+        self.assertEqual(
+            new_nodes3,
+            [
+                TextNode("hello ", TextType.TEXT),
+                TextNode("world", TextType.ITALIC),
+                TextNode(", hi", TextType.TEXT),
+            ],
+        )
+        self.assertEqual(
+            new_nodes4,
+            [
+                TextNode("hello ", TextType.TEXT),
+                TextNode("print('world')", TextType.CODE),
+            ],
+        )
+        self.assertEqual(
+            new_nodes5,
+            [
+                TextNode("go to ", TextType.TEXT),
+                TextNode("hello", TextType.LINK, "https://www.world.com"),
+            ],
+        )
+        self.assertEqual(
+            new_nodes6,
+            [
+                TextNode("hello", TextType.IMAGE, "https://www.world.com/image"),
+                TextNode(" OMG, check this out!", TextType.TEXT),
+            ],
+        )
+        self.assertEqual(
+            new_nodes7,
+            [
+                TextNode("hello", TextType.BOLD),
+                TextNode(", ", TextType.TEXT),
+                TextNode("I am", TextType.ITALIC),
+                TextNode(" the ", TextType.TEXT),
+                TextNode("world", TextType.IMAGE, "https://www.world.com/image"),
+                TextNode("click here to see more", TextType.LINK, "https://www.world.com"),
+            ],
+        )
+
+    def test_textblock(self):
+        text = 'This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)'
+        new_nodes = text_to_textnodes(text)
+        self.assertListEqual(
+            new_nodes,
+            [
+                TextNode("This is ", TextType.TEXT),
+                TextNode("text", TextType.BOLD),
+                TextNode(" with an ", TextType.TEXT),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" word and a ", TextType.TEXT),
+                TextNode("code block", TextType.CODE),
+                TextNode(" and an ", TextType.TEXT),
+                TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg"),
+                TextNode(" and a ", TextType.TEXT),
+                TextNode("link", TextType.LINK, "https://boot.dev"),
+            ],
+        )
+
+class TestMarkdownToTextBlock(unittest.TestCase):
+        def test_markdown_to_blocks(self):
+            md = """
+This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here
+This is the same paragraph on a new line
+
+- This is a list
+- with items
+"""
+            blocks = markdown_to_blocks(md)
+            self.assertEqual(
+                blocks,
+                [
+                    "This is **bolded** paragraph",
+                    "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
+                    "- This is a list\n- with items",
+                ],
+            )
+
+if __name__ == "__main__":
+    unittest.main()

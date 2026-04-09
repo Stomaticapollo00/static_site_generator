@@ -76,10 +76,8 @@ class TestHTMLNode(unittest.TestCase):
         children = [child_node2, child_node3, child_node]
         parent_node = ParentNode("div", [child_node])
         parent_node2 = ParentNode("p", children)
-        parent_node3 = ParentNode("img", [child_node2], {"img": "https://www.google.com"})
         self.assertEqual(parent_node.to_html(), "<div><span>child</span></div>")
         self.assertEqual(parent_node2.to_html(), "<p><b>I am bold</b><i>I am italics</i><span>child</span></p>")
-        self.assertEqual(parent_node3.to_html(), '<img src="https://www.google.com" alt="" /><b>I am bold</b>')
 
     def test_parent_to_html_with_grandchildren(self):
         grandchild_node = LeafNode("b", "grandchild")

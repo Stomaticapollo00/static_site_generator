@@ -1,58 +1,79 @@
+import re
+
 from textnode import TextNode, TextType
 from htmlnode import LeafNode, ParentNode
 
+TOKEN_REGEX = re.compile(
+    r"(!\[([^\[\]]*)\]\(([^\(\)]*)\))"      #IMAGE
+    r"|(\[([^\[\]]*)\]\(([^\(\)]*)\))"      #LINK
+    r"|(\*\*([^*]+)\*\*)"                   #BOLD
+    r"|(_([^_]+)_)"                         #ITALIC
+    r"|(`([^`]+)`)"                         #CODE
+)
+
 def text_node_to_html_node(text_node):
-    match text_node.text_type:
-        case TextType.TEXT:
-            return LeafNode(None, text_node.text)
-        case TextType.BOLD:
-            return LeafNode("b", text_node.text)
-        case TextType.ITALIC:
-            return LeafNode("i", text_node.text)
-        case TextType.CODE:
-            return LeafNode("code", text_node.text)
-        case TextType.LINK:
-            return LeafNode(
-                "a", 
-                text_node.text, 
-                {
-                    "href":text_node.url
-                },
-                )
-        case TextType.IMAGE:
-            return LeafNode(
+    html_tags = {
+        TextType.BOLD: "b",
+        TextType.CODE: "code",
+        TextType.ITALIC: "i",
+        TextType.TEXT: None,
+    }
+    if text_node.text_type in html_tags:
+        return LeafNode(html_tags[text_node.text_type], text_node.text)
+    if text_node.text_type == TextType.IMAGE:
+        return LeafNode(
                 "img",
                 "",
                 {
                     "src": text_node.url,
                     "alt": text_node.text,
                 },
-                )
-        case _:
-            raise Exception("Text type is not supported.")
+            )
+    if text_node.text_type == TextType.LINK:
+        return LeafNode(
+                "a", 
+                text_node.text, 
+                {
+                    "href":text_node.url
+                },
+            )
+    raise Exception("Text type is not supported.")
 
-def split_nodes_delimiter(old_nodes, delimiter, text_type):
+def tokenize_inline_markdown(text):
     new_nodes = []
-    for old_node in old_nodes:
-        if old_node.text_type != TextType.TEXT:
-            new_nodes.append(old_node)
-        else:
-            old_text = old_node.text
-            if old_text.count(delimiter) >= 2 and old_text.count(delimiter) % 2 == 0:
-                while delimiter in old_text:
-                    tmp_text_list = old_text.split(delimiter, 2)
-                    for i in range(0, len(tmp_text_list)):
-                        if i == 0 and tmp_text_list[i] != "":
-                            tmp_node = TextNode(tmp_text_list[i], TextType.TEXT)
-                            new_nodes.append(tmp_node)
-                        elif i == 1:
-                            tmp_node = TextNode(tmp_text_list[i], text_type)
-                            new_nodes.append(tmp_node)
-                    old_text = tmp_text_list[-1]
-                if old_text != "":
-                    new_nodes.append(TextNode(old_text, TextType.TEXT))
-            elif delimiter in old_text:
-                raise Exception("Delimiter found in text but not closed properly")
-            else:
-                new_nodes.append(old_node)
+    last_index = 0
+    for match in TOKEN_REGEX.finditer(text):
+        start, end = match.span()
+        if start > last_index:  #LEADING TEXT
+            new_nodes.append(TextNode(text[last_index:start], TextType.TEXT))
+        if match.group(1):      #IMAGE
+            alt_text = match.group(2)
+            url = match.group(3)
+            new_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
+        elif match.group(4):    #LINK
+            link_text = match.group(5)
+            url = match.group(6)
+            new_nodes.append(TextNode(link_text, TextType.LINK, url))
+        elif match.group(7):    #BOLD
+            bold_text = match.group(8)
+            new_nodes.append(TextNode(bold_text, TextType.BOLD))
+        elif match.group(9):    #ITALIC
+            italic_text = match.group(10)
+            new_nodes.append(TextNode(italic_text, TextType.ITALIC))
+        elif match.group(11):   #CODE
+            code_text = match.group(12)
+            new_nodes.append(TextNode(code_text, TextType.CODE))
+        last_index = end
+    if last_index < len(text):  #TRAILING TEXT
+        new_nodes.append(TextNode(text[last_index:], TextType.TEXT))
     return new_nodes
+
+def text_to_textnodes(text):
+    return tokenize_inline_markdown(text)
+
+def markdown_to_blocks(markdown):
+    return [
+        clean_block
+        for block in markdown.split("\n\n")
+        if (clean_block := block.strip()) != ""
+    ]
