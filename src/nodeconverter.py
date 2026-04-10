@@ -1,7 +1,7 @@
 import re
 
 from textnode import TextNode, TextType
-from htmlnode import LeafNode, ParentNode
+from htmlnode import LeafNode
 
 TOKEN_REGEX = re.compile(
     r"(!\[([^\[\]]*)\]\(([^\(\)]*)\))"      #IMAGE
@@ -70,10 +70,3 @@ def tokenize_inline_markdown(text):
 
 def text_to_textnodes(text):
     return tokenize_inline_markdown(text)
-
-def markdown_to_blocks(markdown):
-    return [
-        clean_block
-        for block in markdown.split("\n\n")
-        if (clean_block := block.strip()) != ""
-    ]
