@@ -1,7 +1,8 @@
 import re
 
 from textnode import TextNode, TextType
-from htmlnode import LeafNode
+from htmlnode import LeafNode, ParentNode
+from textblock import markdown_to_blocks, block_to_blocktype, BlockType
 
 TOKEN_REGEX = re.compile(
     r"(!\[([^\[\]]*)\]\(([^\(\)]*)\))"      #IMAGE
@@ -10,6 +11,9 @@ TOKEN_REGEX = re.compile(
     r"|(_([^_]+)_)"                         #ITALIC
     r"|(`([^`]+)`)"                         #CODE
 )
+
+def strip_ordered_list_prefix(line):
+    return re.sub(r"^\d+\.\s+", "", line)
 
 def text_node_to_html_node(text_node):
     html_tags = {
@@ -70,3 +74,47 @@ def tokenize_inline_markdown(text):
 
 def text_to_textnodes(text):
     return tokenize_inline_markdown(text)
+
+def text_to_children(text):
+    textnodes = text_to_textnodes(text)
+    return [text_node_to_html_node(textnode) for textnode in textnodes]
+
+def markdown_to_html_node(markdown):
+    html_master = []
+    md_blocks = markdown_to_blocks(markdown)
+    for md_block in md_blocks:
+        blocktype = block_to_blocktype(md_block)
+        lines = md_block.split("\n")
+        if blocktype == BlockType.CODE:         #CODE BLOCK
+            code_text = "\n".join(lines[1:-1]) + "\n"
+            code_node = LeafNode("code", code_text)
+            parentnode = ParentNode("pre", [code_node])
+        elif blocktype == BlockType.HEADING:    #HEADING BLOCK
+            count = 0
+            heading_text = md_block
+            while heading_text.startswith("#"):
+                count += 1
+                heading_text = heading_text[1:]
+            heading_text = heading_text.strip()
+            parentnode = ParentNode(f"h{count}", text_to_children(heading_text))
+        elif blocktype == BlockType.QUOTE:      #QUOTE BLOCK
+            quote_lines = [line[1:].strip() for line in lines]
+            quote_text = " ".join(quote_lines)
+            parentnode = ParentNode("blockquote", text_to_children(quote_text))
+        elif blocktype == BlockType.U_LIST:     #UNORDERED LIST
+            line_items = []
+            for line in lines:
+                item_text = line[2:].strip()
+                line_items.append(ParentNode("li", text_to_children(item_text)))
+            parentnode = ParentNode("ul", line_items)
+        elif blocktype == BlockType.O_LIST:     #ORDERED LIST
+            line_items = []
+            for line in lines:
+                item_text = strip_ordered_list_prefix(line).strip()
+                line_items.append(ParentNode("li", text_to_children(item_text)))
+            parentnode = ParentNode("ol", line_items)
+        else:                                   #PARAGRAPH BLOCK
+            paragraph_text = " ".join(line.strip() for line in lines)
+            parentnode = ParentNode("p", text_to_children(paragraph_text))
+        html_master.append(parentnode)
+    return ParentNode("div", html_master)
