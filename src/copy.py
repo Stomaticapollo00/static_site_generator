@@ -1,5 +1,7 @@
 import os, shutil
 
+from nodeconverter import markdown_to_html_node, extract_title
+
 def get_public_dir():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     public_dir = os.path.join(current_dir, "..", "public")
@@ -36,3 +38,24 @@ def copy(path):
     print(f"{os.path.basename(public_dir)} directory has been recreated. Copying files from {os.path.basename(path)} directory.")
     copy_recursive(path, public_dir)
     print(f"All files copied from {os.path.basename(path)} directory.")
+
+def generate_page(from_path, template_path, dest_path):
+    print(f"Generating page from {os.path.basename(from_path)} to {os.path.basename(dest_path)} using {os.path.basename(template_path)}.")
+    with open(from_path, "r", encoding="utf-8") as f:
+        md_file = f.read()
+    with open(template_path, "r", encoding="utf-8") as f:
+        template = f.read()
+    
+    node = markdown_to_html_node(md_file)       #HTML Nodes
+    content = node.to_html()                    #HTML String
+    title = extract_title(md_file)              #Heading
+
+    html_file = template.replace("{{ Title }}", title)
+    html_file = html_file.replace("{{ Content }}", content)
+    
+    dest_dir = os.path.dirname(dest_path)
+    if dest_dir:
+        os.makedirs(dest_dir, exist_ok=True)
+    with open(dest_path, "w", encoding="utf-8") as f:
+        f.write(html_file)
+

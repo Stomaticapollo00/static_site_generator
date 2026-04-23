@@ -12,6 +12,10 @@ TOKEN_REGEX = re.compile(
     r"|(`([^`]+)`)"                         #CODE
 )
 
+HEADER_REGEX = re.compile(
+    r"^\s*#\s+(?!#)(.+)$"
+)
+
 def strip_ordered_list_prefix(line):
     return re.sub(r"^\d+\.\s+", "", line)
 
@@ -118,3 +122,13 @@ def markdown_to_html_node(markdown):
             parentnode = ParentNode("p", text_to_children(paragraph_text))
         html_master.append(parentnode)
     return ParentNode("div", html_master)
+
+def extract_title(markdown):
+    header = ""
+    for line in markdown.split("\n"):
+        match = HEADER_REGEX.match(line)
+        if match:
+            header = match.group(1).strip()
+    if header == "":
+        raise Exception("Header not found.")
+    return header
