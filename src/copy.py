@@ -39,10 +39,11 @@ def copy(path):
     copy_recursive(path, public_dir)
     print(f"All files copied from {os.path.basename(path)} directory.")
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page_helper(from_path, template_path, dest_path):
     print(f"Generating page from {os.path.basename(from_path)} to {os.path.basename(dest_path)} using {os.path.basename(template_path)}.")
     with open(from_path, "r", encoding="utf-8") as f:
         md_file = f.read()
+    
     with open(template_path, "r", encoding="utf-8") as f:
         template = f.read()
     
@@ -58,4 +59,18 @@ def generate_page(from_path, template_path, dest_path):
         os.makedirs(dest_dir, exist_ok=True)
     with open(dest_path, "w", encoding="utf-8") as f:
         f.write(html_file)
+
+def generate_pages(from_path, template_path, dest_path):
+    if os.path.isdir(from_path):
+        for item in os.listdir(from_path):
+            item_path = os.path.join(from_path, item)
+            if os.path.isfile(item_path):
+                item_html = item.replace(".md", ".html")
+                new_dest = os.path.join(dest_path, item_html)
+            else:
+                new_dest = os.path.join(dest_path, item)
+            generate_pages(item_path, template_path, new_dest)
+    else:
+        generate_page_helper(from_path, template_path, dest_path)
+        
 
